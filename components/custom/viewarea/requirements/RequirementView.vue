@@ -22,9 +22,16 @@
     <ResizableHandle  />
 
 
-    <ResizablePanel :default-size="50">
+    <ResizablePanel :default-size="10">
       <ClientOnly>
         <Network />
+      </ClientOnly>
+    </ResizablePanel>
+    <ResizableHandle  />
+
+    <ResizablePanel :default-size="30">
+      <ClientOnly>
+        <Globe />
       </ClientOnly>
       
     </ResizablePanel>
@@ -40,6 +47,10 @@
 <ResizableHandle />
 
 </ResizablePanelGroup>
+
+<div class="attribution">
+  © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
+</div>
 
 
 
@@ -68,5 +79,16 @@ import ChatInterface from '~/components/custom/chat/ChatInterface.vue'
 import Tickers from '~/components/hacks/Tickers.vue';
 import Network from '~/components/hacks/Network.vue';
 import GraphWrapper from '~/components/hacks/GraphWrapper.vue';
-
+import Globe from '~/components/custom/globe/Globe.vue'
 </script>
+
+<style scoped>
+.attribution {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  z-index: 1;
+}
+</style>

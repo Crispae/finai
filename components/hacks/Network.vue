@@ -204,7 +204,9 @@ const toggleLayout = () => {
 
 <style scoped>
 #graph-container {
-  background-color: #fafafa;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
 }
 
 /* Optional: Add some hover effects */
@@ -215,4 +217,18 @@ const toggleLayout = () => {
 :deep(.vis-network:active) {
   cursor: grabbing;
 }
+
+/* Optional: Add some hover effects */
+:deep(.vis-network:hover) {
+  cursor: grab;
+}
+
+:deep(.vis-network:active) {
+  cursor: grabbing;
+}
+
+
+
 </style>
+
+

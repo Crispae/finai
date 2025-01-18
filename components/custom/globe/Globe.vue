@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
+import * as d3 from 'd3-geo'
 
 const globeContainer = ref<HTMLElement | null>(null)
 const selectedCountry = ref('')
@@ -62,11 +63,11 @@ onMounted(async () => {
         .height(globeContainer.value?.clientHeight)
         .atmosphereColor('rgba(127, 127, 255, 0.2)')
         .atmosphereAltitude(0.1)
-        .polygonsData([])
-        .polygonCapColor(() => 'rgba(200, 0, 0, 0.3)')
-        .polygonSideColor(() => 'rgba(200, 0, 0, 0.3)')
-        .polygonStrokeColor(() => '#111')
-        .polygonAltitude(0.01)
+        .hexPolygonsData([])
+        .hexPolygonResolution(3)
+        .hexPolygonMargin(0.3)
+        .hexPolygonColor(() => 'rgba(200, 0, 0, 0.3)')
+        .hexPolygonAltitude(0.01)
 
       globe(globeContainer.value)
 
@@ -90,16 +91,37 @@ const highlightCountry = () => {
   )
 
   if (matchingPolygon) {
-    globe.polygonsData([matchingPolygon])
+    globe.hexPolygonsData([matchingPolygon])
     
-    const center = matchingPolygon.properties.center || 
-      globe.polygonGeoJsonGeometry(matchingPolygon).center
+    // Calculate center using d3-geo centroid
+    const coordinates = matchingPolygon.geometry.coordinates
+    let center
     
-    globe.pointOfView({
-      lat: center[1],
-      lng: center[0],
-      altitude: 1.5
-    }, 1000)
+    if (matchingPolygon.geometry.type === 'Polygon') {
+      center = d3.geoCentroid(matchingPolygon)
+    } else if (matchingPolygon.geometry.type === 'MultiPolygon') {
+      // For MultiPolygon, take the centroid of the largest polygon
+      const areas = coordinates.map(poly => {
+        const feature = {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: poly }
+        }
+        return { poly, area: d3.geoArea(feature) }
+      })
+      const largestPoly = areas.reduce((a, b) => a.area > b.area ? a : b)
+      center = d3.geoCentroid({
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: largestPoly.poly }
+      })
+    }
+
+    if (center) {
+      globe.pointOfView({
+        lat: center[1],
+        lng: center[0],
+        altitude: 1.5
+      }, 1000)
+    }
   }
 }
 

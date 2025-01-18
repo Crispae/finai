@@ -13,5 +13,9 @@ export default defineNuxtConfig({
     componentDir: './components/ui'
   },
 
-  compatibilityDate: '2025-01-05'
+  compatibilityDate: '2025-01-05',
+
+  runtimeConfig: {
+    tavilyKey: process.env.TAVILY_KEY
+  }
 })

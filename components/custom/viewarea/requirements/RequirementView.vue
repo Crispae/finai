@@ -24,7 +24,7 @@
 
     <ResizablePanel :default-size="50">
       <ClientOnly>
-        <GraphWrapper />
+        <Network />
       </ClientOnly>
       
     </ResizablePanel>

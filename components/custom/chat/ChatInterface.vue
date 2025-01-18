@@ -63,7 +63,7 @@
   
   const { toast } = useToast()
   const messageInput = ref('')
-  const sidebarOpen = ref(true)
+  const sidebarOpen = ref(false)
   const currentModelId = ref('')
   const chatContainer = ref<HTMLElement | null>(null)
   

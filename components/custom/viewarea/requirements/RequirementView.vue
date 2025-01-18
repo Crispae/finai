@@ -16,7 +16,7 @@
     </ResizablePanel>
     <ResizableHandle  />
 
-    <ResizablePanel :default-size="100">
+    <ResizablePanel :default-size="35">
         <ChatInterface />
     </ResizablePanel>
     <ResizableHandle  />
@@ -24,7 +24,7 @@
 
     <ResizablePanel :default-size="50">
       <ClientOnly>
-        <Network />
+        <GraphWrapper />
       </ClientOnly>
       
     </ResizablePanel>
@@ -67,5 +67,6 @@ import DirectoryTree from '~/components/custom/explorer/DirectoryTree.vue'
 import ChatInterface from '~/components/custom/chat/ChatInterface.vue'
 import Tickers from '~/components/hacks/Tickers.vue';
 import Network from '~/components/hacks/Network.vue';
+import GraphWrapper from '~/components/hacks/GraphWrapper.vue';
 
 </script>

@@ -28,7 +28,7 @@ import TestingView from '~/components/custom/viewarea/testing/TestingView.vue'
 
 type WorkspaceType = 'requirements' | 'development' | 'design' | 'testing' | 'deployment' | 'release'
 
-const isSidebarCollapsed = ref(false)
+const isSidebarCollapsed = ref(true)
 const currentWorkspace = ref<WorkspaceType>('requirements')
 
 

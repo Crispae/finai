@@ -3,23 +3,18 @@
     class="border-r transition-all duration-300 ease-in-out flex flex-col h-screen"
     :class="[modelValue ? 'w-[72px]' : 'w-[260px]']"
   >
-  <SidebarHeader
+    <!-- Header -->
+    <SidebarHeader
       class="flex-shrink-0" 
       :collapsed="modelValue"
       @update:collapsed="$emit('update:modelValue', $event)"
     />
     
+  
     
-    <SidebarWorkflow
-      class="flex-1 overflow-y-auto" 
-      :collapsed="modelValue"
-      :active-workspace="activeWorkspace"
-      @workspace-change="handleWorkspaceChange"
-    />
-    
-    <!-- Footer: Fixed height -->
+    <!-- Footer: Will stick to bottom -->
     <SidebarFooter
-      class="flex-shrink-0" 
+      class="flex-shrink-0 mt-auto border-t" 
       :collapsed="modelValue"
     />
   </aside>
@@ -47,3 +42,27 @@ const handleWorkspaceChange = (workspace: string) => {
   emit('workspaceChange', workspace)
 }
 </script>
+
+<style scoped>
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #888888 #f1f1f1;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #888888;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+</style>

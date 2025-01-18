@@ -14,7 +14,7 @@
           <ResizableHandle />
           
           <ResizablePanel :default-size="25">
-            <DiagramBoard />
+            <!---<DiagramBoard /> -->
           </ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
@@ -22,7 +22,7 @@
   </template>
   
   <script setup>
-  import DiagramBoard from '~/components/custom/diagramming/DiagramBoard.vue'
+  //import DiagramBoard from '~/components/custom/diagramming/DiagramBoard.vue'
   import DirectoryTree from '~/components/custom/explorer/DirectoryTree.vue'
   import ChatInterface from '../../chat/ChatInterface.vue';
   </script>

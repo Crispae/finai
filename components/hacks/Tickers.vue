@@ -9,7 +9,7 @@
             </CardDescription>
           </div>
           <div class="h-12 w-12">
-            <img :src="stock.logo" :alt="stock.name" class="object-contain h-full w-full" />
+            <img :src="`/images/ticker/${stock.symbol}.png`" :alt="stock.name" class="object-contain h-full w-full" />
           </div>
         </CardHeader>
         <CardContent>

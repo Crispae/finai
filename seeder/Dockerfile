@@ -1,11 +1,17 @@
 FROM python:3.11-slim
 
+# Create and set the working directory
 WORKDIR /app
 
-# Install neo4j-driver for Python, or any dependencies you need
-RUN pip install neo4j==5.5.0
+# Copy requirements.txt into the image
+COPY requirements.txt /app/
+
+# Install Python dependencies with pip3.11
+RUN pip3.11 install --no-cache-dir -r requirements.txt
 
 # Copy your seeding script
-COPY seed.py .
+COPY seed.py /app/
+COPY data /app/data
 
-CMD ["python", "seed.py"]
+# Run the seed script using Python 3.11
+CMD ["python3.11", "seed.py"]

@@ -22,7 +22,8 @@ NEO4J_DATABASE_PORT_2 = os.environ.get("NEO4J_DATABASE_PORT_2")
 NEO4J_URI = f"bolt://neo4j:{NEO4J_DATABASE_PORT_2}"
 NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWROD")
-MODEL_TYPE = os.environ.get("MODEL_TYPE")
+LLM_MODEL_TYPE = os.environ.get("LLM_MODEL_TYPE")
+EMBEDDING_MODEL_TYPE = os.environ.get("EMBEDDING_MODEL_TYPE")
 SEED = os.environ.get("SEED") == "true"
 
 
@@ -55,7 +56,7 @@ class Models:
     OPEN_AI = "OPEN_AI"
     MISTRAL_AI = "MISTRAL_AI"
 
-def get_llm(type: str = Models.MISTRAL_AI):
+def get_llm(type: str = Models.MISTRAL_AI, **params):
     llm = None
     if type == Models.MISTRAL_AI:
         llm = MistralAILLM(
@@ -63,12 +64,16 @@ def get_llm(type: str = Models.MISTRAL_AI):
             model_name="mistral-large-latest",
         )
     else:
-        llm = OpenAILLM(
-            model_name="gpt-4o",
-            model_params={
-                "response_format": {"type": "json_object"}, # use json_object formatting for best results
+        model_params={
                 "temperature": 0 # turning temperature down for more deterministic results
             }
+        if params.get("OPENAI_RESPONSE_FORMAT") == "json":
+            model_params["response_format"] = {"type": "json_object"}
+        
+        llm = OpenAILLM(
+            model_name="gpt-4o",
+            model_params=model_params
+          
     )
     return llm   
 
@@ -136,13 +141,13 @@ Input text:
 '''
 
 async def build_kg_and_embed_documents():
-    print("Get embedder with Model Type: ", MODEL_TYPE)
+    print("Get embedder with Model Type: ", EMBEDDING_MODEL_TYPE)
     #create text embedder
-    embedder = get_embedder(type=MODEL_TYPE)
+    embedder = get_embedder(type=EMBEDDING_MODEL_TYPE)
 
     print("Build KG Builder PDF.")
     kg_builder_pdf = SimpleKGPipeline(
-    llm=get_llm(type=MODEL_TYPE),
+    llm=get_llm(type=Models.OPEN_AI, OPENAI_RESPONSE_FORMAT = "json"),
     driver=driver,
     text_splitter=FixedSizeSplitter(chunk_size=500, chunk_overlap=100),
     embedder=embedder,

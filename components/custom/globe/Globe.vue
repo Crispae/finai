@@ -62,122 +62,316 @@ const stocks = ref([
   // Add more stocks as needed
 ])
 
+const companyHQ = {
+  TSLA: { lat: 30.2246, lng: -97.6047, label: 'Tesla HQ - Austin, TX' },
+  AAPL: { lat: 37.3346, lng: -122.0090, label: 'Apple HQ - Cupertino, CA' },
+  MSFT: { lat: 47.6423, lng: -122.1391, label: 'Microsoft HQ - Redmond, WA' },
+  INTC: { lat: 45.5155, lng: -122.9802, label: 'Intel HQ - Hillsboro, OR' }
+}
+
 let globe: any = null
 let handleResize: () => void
 let polygons: any[] = []
 let eventHexagons: any[] = []
 
 const fetchStockEvents = async () => {
-  console.log('Fetching events for stock:', selectedStock.value)
-  if (!selectedStock.value) {
-    console.log('No stock selected')
-    return
-  }
+  console.log('🔍 Fetching events for stock:', selectedStock.value)
+  if (!selectedStock.value) return
 
   try {
-    // Clear existing hexagons first
+    // Clear existing data
     if (globe) {
       globe.hexPolygonsData([])
+      globe.polygonsData([])
     }
 
-    const locations = processEventsToLocations([]) // Get predefined locations first
-    
-    // Fetch news for each location
-    for (const location of locations) {
-      const response = await fetch('/api/tavily-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `${selectedStock.value} news events ${location.label} factory production manufacturing`,
-          search_depth: 'advanced',
-          include_domains: ['reuters.com', 'bloomberg.com', 'wsj.com']
-        })
+    const response = await fetch('/api/tavily-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `List recent significant events for ${selectedStock.value} that might impact the stock price. Include location information and country names where these events occurred.`,
+        search_depth: 'advanced',
+        include_domains: ['reuters.com', 'bloomberg.com', 'wsj.com', 'wikipedia.org', 'companiesmarketcap.com'],
+        max_results: 8,
+        include_answer: true,
+        geography: true
       })
+    })
 
-      const data = await response.json()
-      console.log(`News for ${location.label}:`, data)
-      location.news = data.results?.slice(0, 3) || []
+    const data = await response.json()
+    const rawEvents = data.results || []
+    console.log('📊 Found raw events:', rawEvents.length)
+
+    const locations = []
+    const affectedCountries = new Set()
+
+    for (const evt of rawEvents) {
+      const label = evt.title || 'Untitled Event'
+      const importance = calculateImportance(evt.content || '')
+      let coords = null
+      let country = null
+
+      // Try extracting location and country
+      const locationInfo = await extractLocationWithCountry(evt.title + ' ' + evt.content)
+      
+      if (locationInfo) {
+        coords = locationInfo.coords
+        country = locationInfo.country
+        console.log(`📍 Found location: ${locationInfo.coords.label} in ${country}`)
+        affectedCountries.add(country)
+      } else if (companyHQ[selectedStock.value]) {
+        coords = {
+          lat: companyHQ[selectedStock.value].lat,
+          lng: companyHQ[selectedStock.value].lng,
+          label: companyHQ[selectedStock.value].label
+        }
+        country = 'United States'
+        console.log(`🏢 Using HQ location: ${coords.label}`)
+        affectedCountries.add(country)
+      }
+
+      if (coords) {
+        locations.push({
+          lat: coords.lat,
+          lng: coords.lng,
+          label: coords.label || label,
+          country,
+          news: {
+            title: label,
+            url: evt.url,
+            importance
+          }
+        })
+      }
     }
 
-    console.log('Locations with news:', locations)
-    highlightEventLocations(locations)
+    console.log('🌍 Affected countries:', Array.from(affectedCountries))
+    console.log('📌 Total locations mapped:', locations.length)
+
+    highlightEventLocationsAndCountries(locations, Array.from(affectedCountries))
   } catch (error) {
-    console.error('Error fetching stock events:', error)
+    console.error('❌ Error fetching stock events:', error)
   }
 }
 
-const processEventsToLocations = (events: any[]) => {
-  console.log('Processing events:', events)
-  
-  // Predefined important locations for Tesla as fallback/supplement
-  const knownLocations = {
-    'TSLA': [
-      { lat: 30.2240, lng: -97.6208, label: 'Tesla HQ - Austin, TX' },
-      { lat: 52.3558, lng: 13.4892, label: 'Gigafactory Berlin' },
-      { lat: 31.0449, lng: 121.2079, label: 'Gigafactory Shanghai' },
-      { lat: 39.5396, lng: -119.4401, label: 'Gigafactory Nevada' },
-      { lat: 29.7974, lng: -95.4626, label: 'Tesla Service Center Houston' }
-    ]
+const extractLocationWithCountry = async (text: string) => {
+  // First try to find coordinates
+  const coordMatches = text.match(/(-?\d+\.\d+)(?:,\s?)(-?\d+\.\d+)/)
+  if (coordMatches) {
+    const lat = parseFloat(coordMatches[1])
+    const lng = parseFloat(coordMatches[2])
+    
+    // Try to get country name from coordinates using reverse geocoding
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      )
+      const data = await response.json()
+      return {
+        coords: {
+          lat,
+          lng,
+          label: data.display_name || 'Event Location'
+        },
+        country: data.address?.country || 'Unknown'
+      }
+    } catch (err) {
+      console.error('Error reverse geocoding:', err)
+    }
   }
 
-  console.log('Selected stock:', selectedStock.value)
-  
-  if (selectedStock.value in knownLocations) {
-    console.log('Using known locations for', selectedStock.value)
-    return knownLocations[selectedStock.value]
+  // Try to extract city and country names
+  const cityCountryRegex = /in\s+([A-Z][a-zA-Z]+(?:[\s-][A-Z][a-zA-Z]+)*),?\s*([A-Z][a-zA-Z]+)/
+  const match = text.match(cityCountryRegex)
+  if (match) {
+    const city = match[1]
+    const country = match[2]
+    try {
+      const geocoded = await geocodeLocation(`${city}, ${country}`)
+      if (geocoded) {
+        return {
+          coords: {
+            lat: geocoded.lat,
+            lng: geocoded.lng,
+            label: `${city}, ${country}`
+          },
+          country
+        }
+      }
+    } catch (err) {
+      console.error('Error geocoding location:', err)
+    }
   }
 
-  // If we have events data, try to extract locations
-  if (events && events.length > 0) {
-    console.log('Attempting to extract locations from events')
-    // Process events logic here if needed
+  // If no location found in text, return null
+  return null
+}
+
+const calculateImportance = (content: string): number => {
+  const impactTerms = {
+    high: ['acquisition', 'merger', 'bankruptcy', 'major layoff', 'CEO', 'earnings beat', 'earnings miss'],
+    medium: ['expansion', 'new product', 'partnership', 'contract', 'investment'],
+    low: ['minor update', 'small change', 'routine maintenance']
   }
 
-  console.log('No locations found, returning empty array')
-  return []
+  let score = 1
+
+  for (const term of impactTerms.high) {
+    if (content.toLowerCase().includes(term)) score += 2
+  }
+  for (const term of impactTerms.medium) {
+    if (content.toLowerCase().includes(term)) score += 1
+  }
+  for (const term of impactTerms.low) {
+    if (content.toLowerCase().includes(term)) score += 0.5
+  }
+
+  return Math.min(Math.max(score, 1), 5)
+}
+
+const geocodeLocation = async (locationName: string) => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}`)
+    const data = await response.json()
+
+    if (data?.[0]) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      }
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error)
+  }
+  return null
 }
 
 const highlightEventLocations = (locations: any[]) => {
-  console.log('Highlighting locations:', locations)
-  if (!globe) {
-    console.error('Globe not initialized')
-    return
-  }
+  if (!globe) return
 
   try {
-    // Convert locations to points for hexbin
-    const points = locations.map(loc => ({
-      lat: loc.lat,
-      lng: loc.lng,
-      weight: 1,
-      news: loc.news,
-      label: loc.label
+    const points = locations.map(location => ({
+      lat: location.lat,
+      lng: location.lng,
+      weight: location.news?.importance || 1,
+      location
     }))
-
-    console.log('Created points data:', points)
 
     globe
       .hexBinPointsData(points)
       .hexLabel(d => {
-        const point = d.points[0] // Get the first point in the hexbin
-        const newsItems = point.news
-          .map((item: any) => `• ${item.title}`)
+        const location = d.points[0].location
+        return [
+          `📍 ${location.label || 'Unknown Location'}`,
+          '',
+          location.news
+            ? [
+                `📰 ${location.news.title}`,
+                '',
+                `💡 Impact: ${location.news.importance}/5`,
+                location.news.url ? `🔗 ${location.news.url}` : ''
+              ].join('\n')
+            : 'No news available'
+        ]
+          .filter(Boolean)
           .join('\n')
-        return `${point.label}\n\nRecent News:\n${newsItems}`
       })
+      .hexTopColor(d => {
+        const location = d.points[0].location
+        if (!location.news) return 'rgba(128,128,128,0.5)'
 
-    // Center the view on the first location
+        const sentiment = analyzeSentiment(location.news.title)
+        return getSentimentColor(sentiment, location.news.importance || 1)
+      })
+      .hexAltitude(d => d.sumWeight * 0.05)
+
     if (locations.length > 0) {
-      console.log('Centering view on:', locations[0])
-      globe.pointOfView({
-        lat: locations[0].lat,
-        lng: locations[0].lng,
-        altitude: 1.5
-      }, 1000)
+      globe.pointOfView(
+        {
+          lat: locations[0].lat,
+          lng: locations[0].lng,
+          altitude: 2.5
+        },
+        1000
+      )
     }
   } catch (error) {
     console.error('Error highlighting locations:', error)
   }
+}
+
+const analyzeSentiment = (text: string): 'positive' | 'negative' | 'neutral' => {
+  const positiveTerms = ['rise', 'gain', 'up', 'growth', 'profit', 'success', 'positive']
+  const negativeTerms = ['fall', 'drop', 'down', 'loss', 'decline', 'negative', 'concern']
+
+  const textLower = text.toLowerCase()
+  const positiveCount = positiveTerms.filter(term => textLower.includes(term)).length
+  const negativeCount = negativeTerms.filter(term => textLower.includes(term)).length
+
+  if (positiveCount > negativeCount) return 'positive'
+  if (negativeCount > positiveCount) return 'negative'
+  return 'neutral'
+}
+
+const getSentimentColor = (sentiment: string, weight: number): string => {
+  const alpha = 0.4 + weight * 0.12
+  switch (sentiment) {
+    case 'positive':
+      return `rgba(0,${128 + weight * 25},0,${alpha})`
+    case 'negative':
+      return `rgba(${128 + weight * 25},0,0,${alpha})`
+    default:
+      return `rgba(${128 + weight * 25},${128 + weight * 25},0,${alpha})`
+  }
+}
+
+// Example of more specialized processing (optional)
+const processNewsEvents = async (results: any[]): Promise<NewsEvent[]> => {
+  const events: NewsEvent[] = []
+
+  for (const result of results) {
+    try {
+      // Extract location from the formatted result
+      const locationMatch = result.content.match(/Location:\s*([^|]+)/)
+      if (!locationMatch) continue
+
+      const locationText = locationMatch[1].trim()
+      const [city, country] = locationText.split(',').map(s => s.trim())
+
+      if (!city || !country) continue
+
+      const coords = await geocodeLocation(`${city}, ${country}`)
+      if (!coords || !isValidCoordinate(coords.lat, coords.lng)) continue
+
+      events.push({
+        title: result.title,
+        url: result.url,
+        date: result.published_date || new Date().toISOString(),
+        snippet: result.snippet || '',
+        importance: calculateImportance(result.title + ' ' + result.snippet),
+        location: {
+          city,
+          country,
+          coordinates: coords
+        }
+      })
+    } catch (error) {
+      console.error('Error processing event:', error)
+    }
+  }
+
+  return events
+}
+
+const isValidCoordinate = (lat: number, lng: number): boolean => {
+  return (
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
 }
 
 onMounted(async () => {
@@ -185,17 +379,19 @@ onMounted(async () => {
     try {
       const Globe = (await import('globe.gl')).default
       const { feature } = await import('topojson-client')
-      const topology = await fetch('https://unpkg.com/world-atlas/countries-110m.json').then(res => res.json())
-      
+      const topology = await fetch(
+        'https://unpkg.com/world-atlas/countries-110m.json'
+      ).then(res => res.json())
+
       polygons = feature(topology, topology.objects.countries).features
-      
+
       countries.value = polygons
         .map(polygon => polygon.properties.name)
         .sort((a, b) => a.localeCompare(b))
 
       globe = Globe()
         .globeImageUrl(null)
-        .globeTileEngineUrl((x: number, y: number, l: number) => 
+        .globeTileEngineUrl((x: number, y: number, l: number) =>
           `https://tile.openstreetmap.org/${l}/${x}/${y}.png`
         )
         .backgroundColor('rgba(0,0,0,0)')
@@ -228,18 +424,18 @@ onMounted(async () => {
 
 const highlightCountry = () => {
   if (!selectedCountry.value || !globe) return
-  
-  const matchingPolygon = polygons.find(polygon => 
-    polygon.properties.name === selectedCountry.value
+
+  const matchingPolygon = polygons.find(
+    polygon => polygon.properties.name === selectedCountry.value
   )
 
   if (matchingPolygon) {
     globe.hexPolygonsData([matchingPolygon])
-    
+
     // Calculate center using d3-geo centroid
     const coordinates = matchingPolygon.geometry.coordinates
     let center
-    
+
     if (matchingPolygon.geometry.type === 'Polygon') {
       center = d3.geoCentroid(matchingPolygon)
     } else if (matchingPolygon.geometry.type === 'MultiPolygon') {
@@ -251,7 +447,7 @@ const highlightCountry = () => {
         }
         return { poly, area: d3.geoArea(feature) }
       })
-      const largestPoly = areas.reduce((a, b) => a.area > b.area ? a : b)
+      const largestPoly = areas.reduce((a, b) => (a.area > b.area ? a : b))
       center = d3.geoCentroid({
         type: 'Feature',
         geometry: { type: 'Polygon', coordinates: largestPoly.poly }
@@ -259,12 +455,85 @@ const highlightCountry = () => {
     }
 
     if (center) {
-      globe.pointOfView({
-        lat: center[1],
-        lng: center[0],
-        altitude: 1.5
-      }, 1000)
+      globe.pointOfView(
+        {
+          lat: center[1],
+          lng: center[0],
+          altitude: 1.5
+        },
+        1000
+      )
     }
+  }
+}
+
+const highlightEventLocationsAndCountries = (locations: any[], countries: string[]) => {
+  if (!globe) return
+
+  try {
+    // Highlight specific locations with hexbins
+    const points = locations.map(location => ({
+      lat: location.lat,
+      lng: location.lng,
+      weight: location.news?.importance || 1,
+      location
+    }))
+
+    // Find matching country polygons
+    const countryPolygons = countries
+      .map(country => polygons.find(
+        polygon => polygon.properties.name === country
+      ))
+      .filter(Boolean)
+
+    // Set hexbin data for specific locations
+    globe
+      .hexBinPointsData(points)
+      .hexLabel(d => {
+        const location = d.points[0].location
+        return [
+          `📍 ${location.label || 'Unknown Location'}`,
+          `🌍 ${location.country || 'Unknown Country'}`,
+          '',
+          location.news
+            ? [
+                `📰 ${location.news.title}`,
+                '',
+                `💡 Impact: ${location.news.importance}/5`,
+                location.news.url ? `🔗 ${location.news.url}` : ''
+              ].join('\n')
+            : 'No news available'
+        ]
+          .filter(Boolean)
+          .join('\n')
+      })
+      .hexTopColor(d => {
+        const location = d.points[0].location
+        if (!location.news) return 'rgba(128,128,128,0.5)'
+        const sentiment = analyzeSentiment(location.news.title)
+        return getSentimentColor(sentiment, location.news.importance || 1)
+      })
+      .hexAltitude(d => d.sumWeight * 0.05)
+      // Add country polygons with same styling as highlightCountry
+      .polygonsData(countryPolygons)
+      .polygonAltitude(0.01)
+      .polygonCapColor(() => 'rgba(200, 200, 200, 0.2)')
+      .polygonSideColor(() => 'rgba(0, 100, 200, 0.05)')
+      .polygonStrokeColor(() => '#111')
+
+    // If we have locations, adjust view to first one
+    if (locations.length > 0) {
+      globe.pointOfView(
+        {
+          lat: locations[0].lat,
+          lng: locations[0].lng,
+          altitude: 2.5
+        },
+        1000
+      )
+    }
+  } catch (error) {
+    console.error('Error highlighting locations and countries:', error)
   }
 }
 

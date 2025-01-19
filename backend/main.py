@@ -8,10 +8,18 @@ import os
 from neo4j_graphrag.generation import RagTemplate
 from neo4j_graphrag.generation.graphrag import GraphRAG
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict
 
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")

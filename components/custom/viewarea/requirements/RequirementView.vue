@@ -10,26 +10,26 @@
   <ResizablePanelGroup direction="horizontal" class="h-full">
     
     <!-- Left panel with Directory Tree -->
-    <ResizablePanel :default-size="25">
+    <ResizablePanel :default-size="15">
       <Tickers />
       <!--<DirectoryTree />-->
     </ResizablePanel>
     <ResizableHandle  />
 
-    <ResizablePanel :default-size="35">
+    <ResizablePanel :default-size="5">
         <ChatInterface />
     </ResizablePanel>
     <ResizableHandle  />
 
 
-    <ResizablePanel :default-size="10">
+    <ResizablePanel :default-size="5">
       <ClientOnly>
         <Network />
       </ClientOnly>
     </ResizablePanel>
     <ResizableHandle  />
 
-    <ResizablePanel :default-size="30">
+    <ResizablePanel :default-size="75">
       <ClientOnly>
         <Globe />
       </ClientOnly>

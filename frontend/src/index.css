@@ -1,0 +1,112 @@
+.app-container {
+  display: flex;
+  height: 100vh;
+  font-family: sans-serif;
+}
+
+/* LEFT SIDEBAR */
+.sidebar {
+  width: 20%;
+  background-color: #f7f7f7;
+  padding: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid #ccc;
+}
+
+.sidebar h2 {
+  margin-top: 0;
+}
+
+.stock-item {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.stock-name {
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.stock-symbol {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.stock-price {
+  font-size: 0.9rem;
+}
+
+.stock-change {
+  font-weight: bold;
+}
+
+.positive {
+  color: green;
+}
+
+.negative {
+  color: red;
+}
+
+/* MAIN CONTENT */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.nav-links {
+  margin-bottom: 1rem;
+}
+
+.nav-links a {
+  margin-right: 1rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+.route-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 1rem;
+}
+
+/* CHAT STYLES */
+.chat-messages {
+  height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+}
+
+.chat-message {
+  margin-bottom: 0.5rem;
+  background: #eee;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  width: 25%;
+  background-color: #fafafa;
+  padding: 1rem;
+  border-left: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.graph-placeholder {
+  border: 2px dashed #888;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: center;
+}

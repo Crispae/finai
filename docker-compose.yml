@@ -1,15 +1,15 @@
 version: "3"
 
 services:
-  nuxt-docker:
-    container_name: nuxt-docker
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "${NUXT_FRONTEND_PORT_MAPPING}"
-    depends_on:
-      - neo4j
+  # nuxt-docker:
+  #   container_name: nuxt-docker
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "${NUXT_FRONTEND_PORT_MAPPING}"
+  #   depends_on:
+  #     - neo4j
 
   neo4j:
     image: neo4j:latest

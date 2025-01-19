@@ -147,7 +147,7 @@ async def build_kg_and_embed_documents():
 
     print("Build KG Builder PDF.")
     kg_builder_pdf = SimpleKGPipeline(
-    llm=get_llm(type=Models.OPEN_AI, OPENAI_RESPONSE_FORMAT = "json"),
+    llm=get_llm(type=LLM_MODEL_TYPE, OPENAI_RESPONSE_FORMAT = "json"),
     driver=driver,
     text_splitter=FixedSizeSplitter(chunk_size=500, chunk_overlap=100),
     embedder=embedder,

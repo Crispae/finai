@@ -2,17 +2,24 @@ from fastapi import FastAPI
 from neo4j_graphrag.retrievers import VectorRetriever
 from utils.neo4j import get_driver
 from utils.graph_rag import get_embedder, get_llm
-from sse_starlette.sse import EventSourceResponse
-
 import os
 
 from neo4j_graphrag.generation import RagTemplate
 from neo4j_graphrag.generation.graphrag import GraphRAG
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
 
 
+
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")
@@ -43,7 +50,7 @@ async def get_query(query_request: QueryRequest):
     vector_retriever = VectorRetriever(
         driver,
         index_name="text_embeddings",
-        embedder=get_embedder(LLM_MODEL_TYPE),
+        embedder=get_embedder(EMBEDDING_MODEL_TYPE),
         return_properties=["text"]
     )
 
@@ -71,42 +78,7 @@ async def get_query(query_request: QueryRequest):
     # 6. Extract the query from the request model and get the answer
     user_query = query_request.query
     print("Got user query: ", user_query)
-    
-
-     # 3. Build a generator that yields tokens or partial results
-    async def event_generator():
-        """
-        This function yields token-by-token (or chunk-by-chunk) partial responses.
-        The exact mechanics depend on whether your LLM (or v_rag) supports a streaming API.
-        """
-        # You might have a method like `v_rag.stream_search` or something similar. 
-        # If not, you’ll need to implement your own streaming approach in the LLM wrapper.
-        #
-        # Below is a pseudo-code snippet. Adjust it to match your actual streaming method.
-        
-        # 1. Retrieve relevant docs
-        retrieved_docs = vector_retriever.get_relevant_documents(user_query, top_k=5)
-
-        # 2. Stream from LLM
-        #    Example of a "pseudo" streaming method that returns chunks/tokens:
-        async for partial_answer in llm.stream_complete(
-            prompt=rag_template.format(
-                query_text=user_query,
-                context="\n".join([doc["text"] for doc in retrieved_docs])
-            )
-        ):
-            # Each chunk is appended/concatenated on the client side
-            yield partial_answer
-
-    print("Starting to stream response for user query...")
-
-    # 4. Return an SSE event stream
-    #
-    #    By default, `sse-starlette` will take any dict or string you yield and 
-    #    transform it into a proper SSE event (`event: message\ndata: ...\n\n`).
-    #
-    #    If you yield raw strings, it sets `data: your_string`.
-    #    If you yield dictionaries, you can set `event`, `retry`, etc. as well.
-    #
-    #    For instance, to yield SSE JSON events, do: yield {"data": json.dumps(...)}
-    return EventSourceResponse(event_generator())
+    rag_response = v_rag.search(user_query, retriever_config={'top_k': 5})
+    print("Got response to user query: ", rag_response.answer)
+    # 7. Return the answer in JSON
+    return {"response": rag_response.answer}
